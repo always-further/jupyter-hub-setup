@@ -68,9 +68,9 @@ Verify with `docker run --rm --gpus all nvidia/cuda:12.2.0-base-ubuntu22.04 nvid
    - `LETSENCRYPT_EMAIL`: email for certificate issuance/renewal notices.
    - `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`: from your OAuth App.
    - `OAUTH_CALLBACK_URL`: typically `https://${DOMAIN}/hub/oauth_callback`.
-   - Choose one access control mode:
+   - Access control mode (choose one; if `ALLOWED_ORGS` is set, `ALLOWED_USERS` is ignored):
      - `ALLOWED_ORGS`: comma-separated GitHub organizations or `org:team` entries (preferred for org-based access).
-     - Or `ALLOWED_USERS`: comma-separated GitHub usernames.
+     - Or `ALLOWED_USERS`: comma-separated GitHub usernames (used only if `ALLOWED_ORGS` is empty).
 
    Optional values:
    - `ADMIN_USERS`: subset of allowed users with admin privileges.
@@ -106,6 +106,7 @@ Verify with `docker run --rm --gpus all nvidia/cuda:12.2.0-base-ubuntu22.04 nvid
 
 - The Hub requests the `read:org` scope so it can verify membership even when it is private.
 - To use GitHub Teams, use `org:team` entries as above.
+- Tip: If you were seeing "403: Forbidden" after successful GitHub auth, ensure `ALLOWED_USERS` is empty when using `ALLOWED_ORGS` (or remove it from `.env`).
 
 ## Launch
 

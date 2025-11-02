@@ -33,22 +33,24 @@ c.GitHubOAuthenticator.scope = ["read:org"]
 allowed_orgs_env = os.environ.get('ALLOWED_ORGS', '')
 allowed_orgs = [tok.strip() for tok in allowed_orgs_env.split(',') if tok.strip()]
 if allowed_orgs:
+    # When org restriction is enabled, ignore ALLOWED_USERS to avoid intersection lockouts
     c.GitHubOAuthenticator.allowed_organizations = allowed_orgs
-
-allowed_users_env = os.environ.get('ALLOWED_USERS', '')
-allowed_users = set()
-if allowed_users_env:
-    allowed_users = {u.strip() for u in allowed_users_env.split(',') if u.strip()}
-elif not allowed_orgs:
-    # Only fall back to file if org restriction is not in use
-    allow_file = '/srv/jupyterhub/allowed_users.txt'
-    if os.path.exists(allow_file):
-        with open(allow_file, 'r', encoding='utf-8') as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith('#'):
-                    continue
-                allowed_users.add(line)
+    allowed_users = set()
+else:
+    allowed_users_env = os.environ.get('ALLOWED_USERS', '')
+    allowed_users = set()
+    if allowed_users_env:
+        allowed_users = {u.strip() for u in allowed_users_env.split(',') if u.strip()}
+    else:
+        # Fallback to file inside the persistent volume
+        allow_file = '/srv/jupyterhub/allowed_users.txt'
+        if os.path.exists(allow_file):
+            with open(allow_file, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith('#'):
+                        continue
+                    allowed_users.add(line)
 
 admin_users_env = os.environ.get('ADMIN_USERS', '')
 admin_users = {u.strip() for u in admin_users_env.split(',') if u.strip()}
