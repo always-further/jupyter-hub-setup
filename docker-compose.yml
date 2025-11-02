@@ -1,0 +1,86 @@
+version: "3.9"
+
+services:
+  nginx-proxy:
+    image: nginxproxy/nginx-proxy:1.6
+    container_name: nginx-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - proxy-tier
+    volumes:
+      - nginx_certs:/etc/nginx/certs:rw
+      - nginx_vhost:/etc/nginx/vhost.d
+      - nginx_html:/usr/share/nginx/html
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+
+  acme-companion:
+    image: nginxproxy/acme-companion:2.4
+    container_name: acme-companion
+    restart: unless-stopped
+    depends_on:
+      - nginx-proxy
+    environment:
+      # Email used for Let’s Encrypt registration and renewal notices
+      - DEFAULT_EMAIL=${LETSENCRYPT_EMAIL}
+      # Explicitly tell acme-companion which proxy container to reload
+      - NGINX_PROXY_CONTAINER=nginx-proxy
+    networks:
+      - proxy-tier
+    volumes:
+      - nginx_certs:/etc/nginx/certs:rw
+      - nginx_vhost:/etc/nginx/vhost.d
+      - nginx_html:/usr/share/nginx/html
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  jupyterhub:
+    build:
+      context: ./hub
+    container_name: jupyterhub
+    restart: unless-stopped
+    networks:
+      - proxy-tier
+      - jupyterhub-net
+    environment:
+      # nginx-proxy + acme-companion
+      - VIRTUAL_HOST=${DOMAIN}
+      - VIRTUAL_PORT=8000
+      - LETSENCRYPT_HOST=${DOMAIN}
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+      # JupyterHub OAuth + spawner settings
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - OAUTH_CALLBACK_URL=${OAUTH_CALLBACK_URL}
+      - HUB_BASE_URL=${HUB_BASE_URL}
+      - SINGLEUSER_IMAGE=${SINGLEUSER_IMAGE}
+      - HOST_WORKSPACE=${HOST_WORKSPACE}
+      - SHARED_DIR=${SHARED_DIR}
+      - ALLOWED_USERS=${ALLOWED_USERS}
+      - ADMIN_USERS=${ADMIN_USERS}
+      - ENABLE_GPU=${ENABLE_GPU}
+      - DOCKER_NETWORK=jupyterhub-net
+    volumes:
+      # Persist Hub DB, cookie secret, and configs
+      - jupyterhub_data:/srv/jupyterhub
+      # Allow Hub to manage single-user containers via Docker API
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Ensure Hub container also sees the host workspace (optional but handy)
+      - ${HOST_WORKSPACE:-/workspace}:${HOST_WORKSPACE:-/workspace}
+    expose:
+      - "8000"
+
+volumes:
+  nginx_certs:
+  nginx_vhost:
+  nginx_html:
+  jupyterhub_data:
+
+networks:
+  proxy-tier:
+    name: proxy-tier
+    driver: bridge
+  jupyterhub-net:
+    name: jupyterhub-net
+    driver: bridge

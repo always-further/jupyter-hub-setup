@@ -1,0 +1,33 @@
+FROM nvidia/cuda:12.2.0-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1
+
+# Install Python 3.11 and essentials
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        python3.11 python3.11-venv python3.11-distutils ca-certificates \
+        python3.11-dev build-essential git tini \
+    && ln -sf /usr/bin/python3.11 /usr/local/bin/python3 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Ensure pip for Python 3.11, then install JupyterHub singleuser + JupyterLab
+RUN python3 -m ensurepip --upgrade \
+    && python3 -m pip install --no-cache-dir --upgrade pip \
+    && python3 -m pip install --no-cache-dir \
+        jupyterhub==4.* \
+        jupyterlab \
+        ipykernel
+
+# Create an unprivileged user
+RUN useradd -m -s /bin/bash -u 1000 jovyan \
+    && chown -R jovyan:jovyan /home/jovyan
+
+# Helpful defaults for GPU inside containers
+ENV NVIDIA_VISIBLE_DEVICES=all \
+    NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+USER jovyan
+WORKDIR /home/jovyan
+
+CMD ["jupyterhub-singleuser"]
+
