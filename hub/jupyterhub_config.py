@@ -71,11 +71,11 @@ c.DockerSpawner.debug = True
 c.DockerSpawner.use_internal_ip = True
 c.DockerSpawner.network_name = os.environ.get('DOCKER_NETWORK', 'jupyterhub-net')
 
-# Set JupyterLab to open in the shared workspace by default
-c.Spawner.default_url = f'/lab/tree{host_workspace}'
-
 # Mount host /workspace and a per-user home volume
 host_workspace = os.environ.get('HOST_WORKSPACE', '/workspace')
+
+# Set JupyterLab to open in the shared workspace by default
+c.Spawner.default_url = f'/lab/tree{host_workspace}'
 volumes = {
     host_workspace: {'bind': host_workspace, 'mode': 'rw'},
     'jupyterhub-user-{username}': '/home/jovyan',
